@@ -3,7 +3,7 @@
   "version": "1.0.3",
   "description": "CLI for scaffolding new full-stack projects",
   "bin": {
-    "laniakea-create-app": "./create-app.sh"
+    "laniakea-create-app": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
