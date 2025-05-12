@@ -1,0 +1,21 @@
+{
+  "name": "laniakea-create-app",
+  "version": "1.0.0",
+  "description": "CLI for scaffolding new full-stack projects",
+  "bin": {
+    "laniakea-create-app": "create-app.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aitorbernis/laniakea-create-app.git"
+  },
+  "keywords": [
+    "scaffold",
+    "cli",
+    "docker",
+    "prisma",
+    "fullstack"
+  ],
+  "author": "Aitor Bernis <aitor1541@gmail.com>",
+  "license": "MIT"
+}
