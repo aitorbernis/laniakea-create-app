@@ -1,28 +1,27 @@
 {
   "name": "laniakea-create-app",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "CLI for scaffolding new full-stack projects",
   "bin": {
-    "laniakea-create-app": "create-app.sh"
+    "laniakea-create-app": "./create-app.sh"
   },
   "scripts": {
-    "dev": "docker-compose up -d --build",
-    "stop": "docker-compose down",
-    "db:reset": "docker-compose down -v && docker-compose up -d db && sleep 5 && docker-compose run --rm backend npx prisma migrate dev --name reset",
-    "test": "echo \"No tests specified\" && exit 0"
+    "build": "tsc",
+    "start": "ts-node src/index.ts"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/aitorbernis/laniakea-create-app.git"
-  },
-  "keywords": [
-    "scaffold",
-    "cli",
-    "docker",
-    "prisma",
-    "fullstack",
-    "laniakea"
-  ],
   "author": "Aitor Bernis <aitor1541@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "inquirer": "^12.6.1",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/chalk": "^0.4.31",
+    "@types/inquirer": "^9.0.8",
+    "@types/node": "^22.15.17",
+    "@types/ora": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
 }
