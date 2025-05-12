@@ -1,6 +1,6 @@
 {
   "name": "laniakea-create-app",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "CLI for scaffolding new full-stack projects",
   "bin": {
     "laniakea-create-app": "./dist/index.js"
