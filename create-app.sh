@@ -14,11 +14,12 @@ DEFAULT_DB_PASS="pass"
 
 function usage() {
   cat <<EOF
-Uso interactivo: te preguntará todos los datos necesarios.
+Usage:
+  laniakea-create-app
 
-Ejecuta sin parámetros y responde a los prompts.
-Opciones:
-  -h, --help   Muestra esta ayuda
+Interactively generate a new full-stack project.
+Options:
+  -h, --help   Show this help message
 EOF
   exit 0
 }
@@ -28,90 +29,87 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   usage
 fi
 
-echo "🔧 Bienvenido al generador de proyectos"
+echo "🔧 Welcome to the Laniakea project generator"
 
-# 1) Nombre del proyecto
-read -p "Nombre del proyecto: " NAME
-[[ -z "$NAME" ]] && { echo "❌ Debes indicar un nombre para el proyecto."; exit 1; }
+# 1) Project name
+read -p "Project name: " NAME
+[[ -z "$NAME" ]] && { echo "❌ You must provide a project name."; exit 1; }
 
-# 2) URL del template
-read -p "URL del repo plantilla [${TEMPLATE_URL}]: " input
-TEMPLATE_URL="${input:-$TEMPLATE_URL}"
-
-# 3) Puertos frontend, admin y backend
-read -p "Puerto HTTP frontend [${DEFAULT_HTTP_PORT}]: " input
+# 2) Ports
+read -p "HTTP port for frontend [${DEFAULT_HTTP_PORT}]: " input
 HTTP_PORT="${input:-$DEFAULT_HTTP_PORT}"
-read -p "Puerto HTTP admin    [${DEFAULT_ADMIN_PORT}]: " input
+read -p "HTTP port for admin    [${DEFAULT_ADMIN_PORT}]: " input
 ADMIN_PORT="${input:-$DEFAULT_ADMIN_PORT}"
-read -p "Puerto backend       [${DEFAULT_BACKEND_PORT}]: " input
+read -p "Port for backend       [${DEFAULT_BACKEND_PORT}]: " input
 BACKEND_PORT="${input:-$DEFAULT_BACKEND_PORT}"
 
-# 4) Configuración DB
-read -p "Puerto MariaDB       [${DEFAULT_DB_PORT}]: " input
+# 3) Database settings
+read -p "MariaDB port           [${DEFAULT_DB_PORT}]: " input
 DB_PORT="${input:-$DEFAULT_DB_PORT}"
-read -p "Root DB password     [${DEFAULT_DB_ROOT_PASS}]: " input
+read -p "Root DB password       [${DEFAULT_DB_ROOT_PASS}]: " input
 DB_ROOT_PASSWORD="${input:-$DEFAULT_DB_ROOT_PASS}"
-read -p "DB name              [${DEFAULT_DB_NAME}]: " input
+read -p "DB name                [${DEFAULT_DB_NAME}]: " input
 DB_NAME="${input:-$DEFAULT_DB_NAME}"
-read -p "DB user              [${DEFAULT_DB_USER}]: " input
+read -p "DB user                [${DEFAULT_DB_USER}]: " input
 DB_USER="${input:-$DEFAULT_DB_USER}"
-read -p "DB password          [${DEFAULT_DB_PASS}]: " input
+read -p "DB password            [${DEFAULT_DB_PASS}]: " input
 DB_PASSWORD="${input:-$DEFAULT_DB_PASS}"
 
 echo
-# 5) Clona y limpia el repo
-
-echo "🚀 Clonando '${NAME}' desde ${TEMPLATE_URL}..."
+# 4) Clone & clean
+echo "🚀 Cloning '${NAME}' from ${TEMPLATE_URL}..."
 git clone --depth 1 "${TEMPLATE_URL}" "${NAME}"
 cd "${NAME}"
 rm -rf .git
+echo "✓ Template cloned and cleaned."
 
-echo "✓ Repositorio limpio."
+# 5) Rename package.json "name" field
+if [[ -f package.json ]]; then
+  echo "📝 Updating package.json name to '$NAME'..."
+  # macOS vs Linux sed differences
+  if sed --version >/dev/null 2>&1; then
+    sed -i "s/\"name\": *\"[^\"]*\"/\"name\": \"$NAME\"/" package.json
+  else
+    sed -i '' "s/\"name\": *\"[^\"]*\"/\"name\": \"$NAME\"/" package.json
+  fi
+fi
 
-# 6) Genera root .env para Docker-Compose
-
-echo "📝 Generando root .env para Docker-Compose…"
+# 6) Generate root .env
+echo "📝 Generating root .env for Docker Compose..."
 cat > .env <<EOF
-# Puertos
 HTTP_PORT=${HTTP_PORT}
 ADMIN_PORT=${ADMIN_PORT}
 BACKEND_PORT=${BACKEND_PORT}
 DB_PORT=${DB_PORT}
 
-# Credenciales MariaDB
 DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 DB_NAME=${DB_NAME}
 DB_USER=${DB_USER}
 DB_PASSWORD=${DB_PASSWORD}
 EOF
+echo "✓ .env created."
 
-echo "✓ Root .env creado."
-
-# 7) Genera backend/.env para Prisma
-
-echo "📝 Generando backend/.env…"
+# 7) Generate service envs
+echo "📝 Generating backend/.env..."
 cat > backend/.env <<EOF
 DATABASE_URL="mysql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
 PORT=${BACKEND_PORT}
 EOF
 
-# 8) Genera frontend/admin .env.local
-
-echo "📝 Generando frontend/.env.local…"
+echo "📝 Generating frontend/.env.local..."
 cat > frontend/.env.local <<EOF
 VITE_API_URL=http://localhost:${BACKEND_PORT}
 EOF
 
-echo "📝 Generando admin/.env.local…"
+echo "📝 Generating admin/.env.local..."
 cat > admin/.env.local <<EOF
 VITE_API_URL=http://localhost:${BACKEND_PORT}
 EOF
 
-# 9) Personaliza docker-compose.yml
-
-echo "🛠 Personalizando docker-compose.yml…"
-export HTTP_PORT ADMIN_PORT BACKEND_PORT DB_PORT
-export DB_ROOT_PASSWORD DB_NAME DB_USER DB_PASSWORD
+# 8) Customize docker-compose.yml
+echo "🛠 Customizing docker-compose.yml..."
+export HTTP_PORT ADMIN_PORT BACKEND_PORT DB_PORT \
+       DB_ROOT_PASSWORD DB_NAME DB_USER DB_PASSWORD
 envsubst '
 $HTTP_PORT 
 $ADMIN_PORT 
@@ -122,39 +120,36 @@ $DB_NAME
 $DB_USER 
 $DB_PASSWORD' \
 < docker-compose.yml > tmp-dc.yml && mv tmp-dc.yml docker-compose.yml
+echo "✓ docker-compose.yml updated."
 
-echo "✓ docker-compose.yml actualizado."
-
-# 10) Elimina contenedores y volumen previo
-
-echo "🗑  Borrando contenedores y volumen anterior…"
+# 9) Clean previous Docker state
+echo "🗑 Removing old containers and volumes..."
 docker-compose down -v || true
 
-# 11) Levanta contenedores Docker
-
-echo "🚀 Levantando contenedores (docker-compose up -d --build)…"
+# 10) Start Docker
+echo "🚀 Starting Docker services..."
 docker-compose up -d --build
 
-# 12) Instala deps en root
-
-echo "🔧 Instalando dependencias del monorepo…"
+# 11) Install monorepo deps
+echo "🔧 Installing monorepo dependencies..."
 npm install
 
-# 13) Prepara backend para Prisma
-echo "🔧 Preparando backend para Prisma…"
+# 12) Prepare backend for Prisma
+echo "🔧 Preparing backend (Prisma)..."
 cd backend
 npm install
-
-# Genera Prisma Client y aplica el esquema sin migraciones
 npx prisma generate
 npx prisma db push
-cd ..
 
-# 14) Mensaje final
+
 echo
-echo "✅ Proyecto '${NAME}' creado exitosamente!"
+echo "✅ Project '${NAME}' created successfully!"
 echo "  • Frontend: http://localhost:${HTTP_PORT}"
 echo "  • Admin:    http://localhost:${ADMIN_PORT}"
 echo "  • API:      http://localhost:${BACKEND_PORT}"
 echo
-echo "Para ver la base vacía: cd ${NAME}/backend && npx prisma studio"
+echo "👉 Next steps:"
+echo "   cd ${NAME}"
+echo "   npm run dev    # to start everything"
+echo "   npm run stop   # to stop the stack"
+echo "   cd backend && npx prisma studio    # inspect your empty DB"
